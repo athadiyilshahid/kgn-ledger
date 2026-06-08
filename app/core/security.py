@@ -1,63 +1,35 @@
-from datetime import datetime, timedelta
-from jose import JWTError, jwt
 from passlib.context import CryptContext
+from jose import jwt
+from datetime import datetime, timedelta
 
-# =========================
-# 🔐 CONFIG
-# =========================
-
-SECRET_KEY = "kgn-ledger-super-secure-2026-key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
-
-# =========================
-# 🔑 PASSWORD HASHING
-# =========================
-
+# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+# ---------------- PASSWORD FUNCTIONS ----------------
+
 def hash_password(password: str) -> str:
-    """
-    Hash plain password before storing in DB
-    """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verify login password against stored hash
-    """
     return pwd_context.verify(plain_password, hashed_password)
 
 
-# =========================
-# 🔐 JWT TOKEN
-# =========================
+# ---------------- JWT CONFIG ----------------
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    """
-    Create JWT access token
-    """
+SECRET_KEY = "CHANGE_THIS_TO_A_STRONG_SECRET_KEY"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (
+        expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
     to_encode.update({"exp": expire})
 
-    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return token
-
-
-# =========================
-# 🔍 DECODE TOKEN (OPTIONAL BUT USEFUL)
-# =========================
-
-def decode_access_token(token: str):
-    """
-    Decode JWT token and return payload
-    """
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

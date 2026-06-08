@@ -1,50 +1,61 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
-from app import models
-from app.core.security import hash_password, verify_password, create_access_token
+from app import models, schemas
+from app.database import get_db
+from app.core.security import get_password_hash, verify_password
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+from jose import JWTError, jwt
+
+# =========================
+# CONFIG
+# =========================
+
+SECRET_KEY = "CHANGE_THIS_TO_A_STRONG_SECRET"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 # =========================
-# DATABASE DEPENDENCY
+# CREATE ACCESS TOKEN
 # =========================
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    to_encode.update({"exp": expire})
+
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 # =========================
 # REGISTER USER
 # =========================
-
 @router.post("/register")
-def register_user(
-    name: str,
-    email: str,
-    password: str,
-    phone: str | None = None,
-    db: Session = Depends(get_db)
-):
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
-    # check if user exists
-    existing_user = db.query(models.User).filter(models.User.email == email).first()
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
 
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
-    # create new user
+    hashed_password = get_password_hash(user.password)
+
     new_user = models.User(
-        name=name,
-        email=email,
-        phone=phone,
-        password_hash=hash_password(password),
+        name=user.name,
+        phone=user.phone,
+        email=user.email,
+        password_hash=hashed_password,
         role="staff"
     )
 
@@ -53,7 +64,7 @@ def register_user(
     db.refresh(new_user)
 
     return {
-        "message": "User registered successfully",
+        "message": "User created successfully",
         "user_id": new_user.id
     }
 
@@ -61,37 +72,22 @@ def register_user(
 # =========================
 # LOGIN USER
 # =========================
-
 @router.post("/login")
-def login_user(
-    email: str,
-    password: str,
-    db: Session = Depends(get_db)
-):
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
-    user = db.query(models.User).filter(models.User.email == email).first()
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
 
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not verify_password(password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(user.password, db_user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token(
-        data={
-            "user_id": user.id,
-            "email": user.email,
-            "role": user.role
-        }
+    access_token = create_access_token(
+        data={"sub": str(db_user.id), "role": db_user.role}
     )
 
     return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role
-        }
+        "access_token": access_token,
+        "token_type": "bearer"
     }

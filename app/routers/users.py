@@ -1,68 +1,61 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.deps import get_db
-from app import models
+
+from app import models, schemas
+from app.database import get_db
 from app.core.security import hash_password
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-# ➤ CREATE USER (Admin use)
-@router.post("/")
-def create_user(
-    name: str,
-    email: str,
-    phone: str = None,
-    password: str = None,
-    role: str = "staff",
-    db: Session = Depends(get_db)
-):
-    # check if user exists
-    existing_user = db.query(models.User).filter(models.User.email == email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exists")
+# -------------------------
+# CREATE USER
+# -------------------------
+@router.post("/", response_model=schemas.UserOut)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
-    user = models.User(
-        name=name,
-        email=email,
-        phone=phone,
-        password_hash=hash_password(password),
-        role=role
+    # check if user exists
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # create user object
+    new_user = models.User(
+        name=user.name,
+        email=user.email,
+        hashed_password=hash_password(user.password)
     )
 
-    db.add(user)
+    db.add(new_user)
     db.commit()
-    db.refresh(user)
+    db.refresh(new_user)
 
-    return {"message": "User created successfully", "user_id": user.id}
+    return new_user
 
 
-# ➤ GET ALL USERS
-@router.get("/")
+# -------------------------
+# GET ALL USERS
+# -------------------------
+@router.get("/", response_model=list[schemas.UserOut])
 def get_users(db: Session = Depends(get_db)):
     return db.query(models.User).all()
 
 
-# ➤ GET SINGLE USER
-@router.get("/{user_id}")
+# -------------------------
+# GET SINGLE USER
+# -------------------------
+@router.get("/{user_id}", response_model=schemas.UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)):
+
     user = db.query(models.User).filter(models.User.id == user_id).first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
 
     return user
-
-
-# ➤ DELETE USER
-@router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    db.delete(user)
-    db.commit()
-
-    return {"message": "User deleted successfully"}
