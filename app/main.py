@@ -7,8 +7,7 @@ from app.database import Base, engine
 from app import models
 
 # Routers
-from app.routers import users, sales, purchases, expenses, ledger
-
+from app.routers import user, sales, purchases, expenses, ledger
 
 # =========================
 # APP INITIALIZATION
@@ -30,7 +29,7 @@ def startup():
 # =========================
 # ROUTERS
 # =========================
-app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(sales.router, prefix="/sales", tags=["Sales"])
 app.include_router(purchases.router, prefix="/purchases", tags=["Purchases"])
 app.include_router(expenses.router, prefix="/expenses", tags=["Expenses"])
