@@ -1,40 +1,68 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
 
-# Load .env file (only works locally, ignored in Render)
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+
+# =========================
+# LOAD ENVIRONMENT VARIABLES
+# =========================
+
 load_dotenv()
 
-# Get DB URL from environment
+
+# =========================
+# DATABASE URL
+# =========================
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise Exception("DATABASE_URL not set in environment variables")
+    raise Exception(
+        "DATABASE_URL environment variable is missing"
+    )
 
-# Create SQLAlchemy engine
+
+# =========================
+# SQLALCHEMY ENGINE
+# =========================
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,   # important for cloud DB (Neon/Render)
+    pool_pre_ping=True,
     pool_recycle=300,
     echo=False
 )
 
-# Session factory
+
+# =========================
+# SESSION FACTORY
+# =========================
+
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine
 )
 
-# Base model class
+
+# =========================
+# BASE MODEL
+# =========================
+
 Base = declarative_base()
 
 
-# Dependency helper (used in deps.py)
+# =========================
+# DATABASE DEPENDENCY
+# =========================
+
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
+
     finally:
         db.close()
