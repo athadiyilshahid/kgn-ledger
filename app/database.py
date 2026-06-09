@@ -1,44 +1,21 @@
 import os
-
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-
-# =========================
-# LOAD ENVIRONMENT VARIABLES
-# =========================
-
+# Load env FIRST
 load_dotenv()
-
-
-# =========================
-# DATABASE URL
-# =========================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise Exception(
-        "DATABASE_URL environment variable is missing"
-    )
-
-
-# =========================
-# SQLALCHEMY ENGINE
-# =========================
+    raise Exception("DATABASE_URL not set")
 
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=300,
-    echo=False
+    pool_recycle=300
 )
-
-
-# =========================
-# SESSION FACTORY
-# =========================
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -46,23 +23,12 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-
-# =========================
-# BASE MODEL
-# =========================
-
 Base = declarative_base()
 
 
-# =========================
-# DATABASE DEPENDENCY
-# =========================
-
 def get_db():
     db = SessionLocal()
-
     try:
         yield db
-
     finally:
         db.close()
