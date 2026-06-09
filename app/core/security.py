@@ -1,36 +1,48 @@
+import os
 from datetime import datetime, timedelta, timezone
+
 from jose import jwt
 from passlib.context import CryptContext
-import os
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12
-)
+# =========================
+# CONFIG
+# =========================
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 if not SECRET_KEY:
-    raise ValueError("SECRET_KEY is not set")
+    raise ValueError("SECRET_KEY is missing in environment variables")
+
+
+# =========================
+# PASSWORD HASHING (ARGON2 ONLY)
+# =========================
+
+pwd_context = CryptContext(
+    schemes=["argon2"],   # 🚀 NO bcrypt anywhere
+    deprecated="auto"
+)
 
 
 def hash_password(password: str) -> str:
-    # bcrypt hard limit fix
-    if len(password) > 72:
-        password = password[:72]
-
+    """
+    Hash password using Argon2 (secure + no 72-byte limit issue)
+    """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    if len(plain_password) > 72:
-        plain_password = plain_password[:72]
-
+    """
+    Verify password against stored hash
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
+
+# =========================
+# JWT TOKEN
+# =========================
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -48,5 +60,5 @@ def verify_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("user_id")
-    except:
+    except Exception:
         return None
