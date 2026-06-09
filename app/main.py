@@ -1,17 +1,22 @@
 from fastapi import FastAPI
 
+# Import DB + Base
 from app.database import Base, engine
+
+# IMPORTANT: ensures all models are registered
 from app import models
 
-from app.routers import (
-    users,
-    sales,
-    purchases,
-    expenses,
-    ledger
-)
+# Routers
+from app.routers import users, sales, purchases, expenses, ledger
 
-app = FastAPI(title="KGN Ledger API")
+
+# =========================
+# APP INITIALIZATION
+# =========================
+app = FastAPI(
+    title="KGN Ledger API",
+    version="1.0.0"
+)
 
 
 # =========================
@@ -19,7 +24,6 @@ app = FastAPI(title="KGN Ledger API")
 # =========================
 @app.on_event("startup")
 def startup():
-    # This ensures all tables exist in PostgreSQL (Render/Neon)
     Base.metadata.create_all(bind=engine)
 
 
@@ -39,5 +43,6 @@ app.include_router(ledger.router, prefix="/ledger", tags=["Ledger"])
 @app.get("/")
 def root():
     return {
-        "message": "KGN Ledger API is running"
+        "message": "KGN Ledger API is running",
+        "status": "healthy"
     }

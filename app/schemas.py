@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 # =========================
@@ -8,23 +7,23 @@ from typing import Optional
 
 class UserCreate(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     password: str
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
 class UserOut(BaseModel):
     id: int
     name: str
-    email: str
+    email: EmailStr
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    # Pydantic v2 way (IMPORTANT FIX)
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -53,8 +52,7 @@ class SaleResponse(BaseModel):
     price: float
     total: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -74,8 +72,7 @@ class PurchaseResponse(BaseModel):
     cost: float
     total: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -92,8 +89,7 @@ class ExpenseResponse(BaseModel):
     description: str
     amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -112,5 +108,4 @@ class LedgerEntryResponse(BaseModel):
     debit: float
     credit: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
